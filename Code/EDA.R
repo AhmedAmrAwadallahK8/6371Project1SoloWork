@@ -40,6 +40,13 @@ LifeExpecRaw %>%
   #As they introduce a sampling BIAS. A subsequent model with these features
   #Could be considerd but with the caveat that it has a bias in it
 
+#BMI: Nonlinear
+#under.five.deaths: Nonlinear
+#Polio: Nonlinear
+#Diphtheria: Nonlinear
+#HIV.AIDS: Nonlinear
+#thinness..1.19.years: Nonlinear
+
 #EDA Visual Summary
   #Strong Relationship
     #Year: Linear Y
