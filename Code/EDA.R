@@ -165,6 +165,4 @@ LifeExpecRaw %>% ggplot(aes(x=Income.composition.of.resources, y=Life.expectancy
 #ED21: Schooling: Number of years of Schooling(years)
 LifeExpecRaw %>% ggplot(aes(x=Schooling, y=Life.expectancy)) + geom_smooth()
 
-cars
-plot(cars$speed, cars$dist)
 
