@@ -6,7 +6,7 @@ library(tidyverse)
 library(GGally)
 library(car)
 library(glmnet)
-########Use averaging
+
 get_train_test_list = function(df, splitPercent){
   dfRowIndices = 1:dim(df)[1]
   dfRowSize = dim(df)[1]
