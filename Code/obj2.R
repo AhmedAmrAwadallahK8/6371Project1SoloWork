@@ -200,7 +200,7 @@ linearModel4 = lm(Life.expectancy ~ Year + Status +
                     under.five.deaths + under.five.deaths^2 + under.five.deaths^3 + under.five.deaths^4 +
                     Polio + Polio^2 + Polio^3 +
                     Diphtheria + Diphtheria^2 + Diphtheria^3 + 
-                    1/HIV.AIDS + 
+                    log(1/HIV.AIDS) + 
                     thinness..1.19.years + thinness..1.19.years^2 + thinness..1.19.years^3 + thinness..1.19.years^4,
                   data = Train4)
 
@@ -242,7 +242,7 @@ linearModel5 = lm(Life.expectancy ~ Year + Status +
                     BMI + BMI^2 + BMI^3 + BMI^4 + 
                     Polio + Polio^2 + Polio^3 +
                     Diphtheria + Diphtheria^2 + Diphtheria^3 + 
-                    1/HIV.AIDS + 
+                    log(1/HIV.AIDS) + 
                     thinness..1.19.years + thinness..1.19.years^2 + thinness..1.19.years^3 + thinness..1.19.years^4,
                   data = Train5)
 
@@ -316,7 +316,7 @@ for(i in 1:modelIterations){
                       under.five.deaths + under.five.deaths^2 + under.five.deaths^3 + under.five.deaths^4 +
                       Polio + Polio^2 + Polio^3 +
                       Diphtheria + Diphtheria^2 + Diphtheria^3 + 
-                      1/HIV.AIDS + 
+                      log(1/HIV.AIDS) + 
                       thinness..1.19.years + thinness..1.19.years^2 + thinness..1.19.years^3 + thinness..1.19.years^4,
                     data = Train4)
   linearModel5 = lm(Life.expectancy ~ Year + Status + 
@@ -324,7 +324,7 @@ for(i in 1:modelIterations){
                       BMI + BMI^2 + BMI^3 + BMI^4 + 
                       Polio + Polio^2 + Polio^3 +
                       Diphtheria + Diphtheria^2 + Diphtheria^3 + 
-                      1/HIV.AIDS + 
+                      log(1/HIV.AIDS) + 
                       thinness..1.19.years + thinness..1.19.years^2 + thinness..1.19.years^3 + thinness..1.19.years^4,
                     data = Train5)
   
