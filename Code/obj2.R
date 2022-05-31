@@ -373,9 +373,9 @@ for(i in 1:modelIterations){
   #Get AIC
   aicModel1 = aicModel1 + AIC(linearModel1)
   aicModel2 = aicModel2 + AIC(linearModel2)
-  aicModel3 = aicModel3 + AIC(linearModel2)
-  aicModel4 = aicModel4 + AIC(linearModel2)
-  aicModel5 = aicModel5 + AIC(linearModel2)
+  aicModel3 = aicModel3 + AIC(linearModel3)
+  aicModel4 = aicModel4 + AIC(linearModel4)
+  aicModel5 = aicModel5 + AIC(linearModel5)
 }
 
 #Average Everything
