@@ -38,6 +38,7 @@ LifeExpecClean1 %>%
   gather(Column, NA_Count) %>%
   ggplot(aes(x=NA_Count, y=Column, fill = Column)) + geom_col() + ylab("Feature") + xlab("Na Value Percent")
 
+##Model 1
 #Train Test Split
 splitPercent = 0.85
 trainTestList = get_train_test_list(LifeExpecClean1, splitPercent)
@@ -59,8 +60,6 @@ plot(linearModel1)
 #ggpairs(Train1)
 par(mfrow=c(1,1))
 vif(linearModel1)^2
-
-#
 
 #Model Performance Stats: RMSE
 Predictions = predict(linearModel1, Test1)
@@ -95,13 +94,16 @@ testMSE_LASSO<-mean((Test1Target-lasso.pred)^2)
 testMSE_LASSO
 
 coef(lasso.mod,s=bestlambda)
+
+##Model 2
+
 #Use coef to remove terms, increase complexity of remaining terms
 #Remove:
-  #Measles: e-05
-  #percent.expenditure: e-04
-  #thinness.5.9.years: e-04
+#Measles: e-05
+#percent.expenditure: e-04
+#thinness.5.9.years: e-04
 #Most Impactful Term:
-  #Status e0
+#Status e0
 
 #Post Lasso Var Selection
 variablesToRemove = c("Measles", "percentage.expenditure", "thinness.5.9.years")
@@ -138,7 +140,9 @@ rmse2 = sqrt(mse)
 rmse2
 AIC(linearModel2)
 
+##Model 3
 #under.five.deaths and infant.deaths high VIF. Remove infant.deaths and Retrain
+
 variablesToRemove = c("infant.deaths")
 LifeExpecClean3 = LifeExpecClean2 %>% select(-variablesToRemove)
 
@@ -172,6 +176,9 @@ mse = mean(SquaredResiduals)
 rmse3 = sqrt(mse)
 rmse3
 AIC(linearModel3)
+
+
+##Model 4
 
 #Now deal with polynomial behavior
 #Variables with nonlinear behavior
@@ -224,7 +231,8 @@ rmse4 = sqrt(mse)
 rmse4
 AIC(linearModel4)
 
-#Model 5
+##Model 5
+#under.five.deaths no longer a significant term. Remove
 variablesToRemove = c("under.five.deaths")
 LifeExpecClean5 = LifeExpecClean3 %>% select(-variablesToRemove)
 
@@ -278,6 +286,8 @@ aicModel3 = 0
 aicModel4 = 0
 aicModel5 = 0
 
+#Loop creates a train test split then evaluates the RMSe and AIC. Do this 
+#modelIterations amount of times and average result.
 for(i in 1:modelIterations){
   print(i)
   #Train Test Setup
