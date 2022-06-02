@@ -16,6 +16,23 @@ LifeExpecRaw<-read.csv(LifeExpecFilePath)
 variablesWithHighNa = c("Total.expenditure", "Schooling", "Population", "Income.composition.of.resources",
                         "Hepatitis.B", "GDP", "Alcohol", "Country") #High NA vars have More than 5% 
 LifeExpecClean1 = LifeExpecRaw %>% select(-variablesWithHighNa)
+
+variablesToExclude = c("Total.expenditure", "Schooling", "Population", "Income.composition.of.resources",
+                       "Hepatitis.B", "GDP", "Alcohol")
+
+LifeExpecNA = LifeExpecRaw %>% select(-variablesToExclude)
+
+#Check the countrys that experienced the most NA rows
+LifeExpecNA = LifeExpecNA[rowSums(is.na(LifeExpecNA)) > 0,]
+str(LifeExpecNA)
+
+#Specifically South Sudan and Sudan have the most missing values
+LifeExpecNA %>% ggplot(aes(y = Country)) + geom_bar()
+
+#Lose Some Perspective on Developing Nations
+LifeExpecNA %>% ggplot(aes(y = Status)) + geom_bar()
+
+#RemoveNAs
 LifeExpecClean1$Status = as.factor(LifeExpecClean1$Status)
 LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(Life.expectancy))
 LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(BMI))
@@ -24,6 +41,9 @@ LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(Diphtheria))
 LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(Polio))
 LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(thinness..1.19.years))
 LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(thinness.5.9.years))
+
+PercentDataRemoved = (dim(LifeExpecRaw)[1] - dim(LifeExpecClean1)[1])/dim(LifeExpecRaw)[1]*100
+PercentDataRemoved
 
 LifeExpecClean1$Year = as.numeric(LifeExpecClean1$Year)
 LifeExpecClean1$Adult.Mortality = as.numeric(LifeExpecClean1$Adult.Mortality)
