@@ -5,8 +5,12 @@ library(tidyverse)
 library(GGally)
 library(car)
 library(glmnet)
-#Add infant.deaths model
-#Remove Year model
+
+#Change working directory to this source file directory
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+
+#Load my custom functions
+if(!exists("get_train_test_list", mode="function")) source("personal_funcs.r")
 
 #Extract
 LifeExpecFilePath = "../Datasets/LifeExpectancyData.csv"
@@ -19,7 +23,7 @@ variablesToExclude = c("Total.expenditure", "Schooling", "Population", "Income.c
 LifeExpecNA = LifeExpecRaw %>% select(-variablesToExclude)
 
 #Check the countrys that experienced the most NA rows
-LifeExpecNA = LifeExpecNA[rowSums(is.na(LifeExpecNA)) > 0,]
+LifeExpecNA = get_na_df(LifeExpecNA)
 str(LifeExpecNA)
 
 #Specifically South Sudan and Sudan have the most missing values
