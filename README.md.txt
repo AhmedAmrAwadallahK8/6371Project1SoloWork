@@ -1,1 +1,0 @@
-## Personal attempt for project 1
