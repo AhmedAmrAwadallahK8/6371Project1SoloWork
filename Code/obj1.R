@@ -11,21 +11,7 @@ library(glmnet)
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 #Load my custom functions
-if(!exists("get_train_test_list", mode="function")) source("personal_funcs.r")
-
-get_train_test_list = function(df, splitPercent){
-  dfRowIndices = 1:dim(df)[1]
-  dfRowSize = dim(df)[1]
-  
-  sampleSize = round(splitPercent * dfRowSize)
-  trainIndices = sample(dfRowIndices, sampleSize)
-  testIndices = -trainIndices
-  
-  train = df[trainIndices,]
-  test = df[testIndices,]
-  
-  return(list(train, test))
-}
+source("personal_funcs.r")
 
 #Variables with more than 5% NA Values
   #Total.expenditure

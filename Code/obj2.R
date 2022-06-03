@@ -6,11 +6,15 @@ library(GGally)
 library(car)
 library(glmnet)
 
+#ToDo
+  #Train Val Test
+  #Redo analysis standardized
+
 #Change working directory to this source file directory
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 #Load my custom functions
-if(!exists("get_train_test_list", mode="function")) source("personal_funcs.r")
+source("personal_funcs.r")
 
 #Extract
 LifeExpecFilePath = "../Datasets/LifeExpectancyData.csv"
@@ -35,39 +39,54 @@ LifeExpecNA %>% ggplot(aes(y = Status)) + geom_bar()
 #Remove High NA Features and Clean Data
 variablesWithHighNa = c("Total.expenditure", "Schooling", "Population", "Income.composition.of.resources",
                         "Hepatitis.B", "GDP", "Alcohol", "Country") #High NA vars have More than 5% 
-LifeExpecClean1 = LifeExpecRaw %>% select(-variablesWithHighNa)
+LifeExpecClean = LifeExpecRaw %>% select(-variablesWithHighNa)
 
 #RemoveNAs
-LifeExpecClean1$Status = as.factor(LifeExpecClean1$Status)
-LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(Life.expectancy))
-LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(BMI))
-LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(Adult.Mortality))
-LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(Diphtheria))
-LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(Polio))
-LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(thinness..1.19.years))
-LifeExpecClean1 = LifeExpecClean1 %>% filter(!is.na(thinness.5.9.years))
+LifeExpecClean$Status = as.factor(LifeExpecClean$Status)
+LifeExpecClean = LifeExpecClean %>% filter(!is.na(Life.expectancy))
+LifeExpecClean = LifeExpecClean %>% filter(!is.na(BMI))
+LifeExpecClean = LifeExpecClean %>% filter(!is.na(Adult.Mortality))
+LifeExpecClean = LifeExpecClean %>% filter(!is.na(Diphtheria))
+LifeExpecClean = LifeExpecClean %>% filter(!is.na(Polio))
+LifeExpecClean = LifeExpecClean %>% filter(!is.na(thinness..1.19.years))
+LifeExpecClean = LifeExpecClean %>% filter(!is.na(thinness.5.9.years))
 
 #How much of the original dataset did we remove: around 1%
-PercentDataRemoved = (dim(LifeExpecRaw)[1] - dim(LifeExpecClean1)[1])/dim(LifeExpecRaw)[1]*100
+PercentDataRemoved = (dim(LifeExpecRaw)[1] - dim(LifeExpecClean)[1])/dim(LifeExpecRaw)[1]*100
 PercentDataRemoved
 
-LifeExpecClean1$Year = as.numeric(LifeExpecClean1$Year)
-LifeExpecClean1$Adult.Mortality = as.numeric(LifeExpecClean1$Adult.Mortality)
-LifeExpecClean1$infant.deaths = as.numeric(LifeExpecClean1$infant.deaths)
-LifeExpecClean1$Measles = as.numeric(LifeExpecClean1$Measles)
-LifeExpecClean1$under.five.deaths = as.numeric(LifeExpecClean1$under.five.deaths)
-LifeExpecClean1$Polio = as.numeric(LifeExpecClean1$Polio)
-LifeExpecClean1$Diphtheria = as.numeric(LifeExpecClean1$Diphtheria)
+LifeExpecClean$Year = as.numeric(LifeExpecClean$Year)
+LifeExpecClean$Adult.Mortality = as.numeric(LifeExpecClean$Adult.Mortality)
+LifeExpecClean$infant.deaths = as.numeric(LifeExpecClean$infant.deaths)
+LifeExpecClean$Measles = as.numeric(LifeExpecClean$Measles)
+LifeExpecClean$under.five.deaths = as.numeric(LifeExpecClean$under.five.deaths)
+LifeExpecClean$Polio = as.numeric(LifeExpecClean$Polio)
+LifeExpecClean$Diphtheria = as.numeric(LifeExpecClean$Diphtheria)
 
 #Verify no NAs
-LifeExpecClean1 %>% 
+LifeExpecClean %>% 
   summarise(across(everything(), ~ sum(is.na(.x)))/2938*100) %>%
   gather(Column, NA_Count) %>%
   ggplot(aes(x=NA_Count, y=Column, fill = Column)) + geom_col() + ylab("Feature") + xlab("Na Value Percent")
 
-LifeExpecClean = LifeExpecClean1
+
+
+#Transform a feature prior to standardization as it will report NA values if we dont do it now
+LifeExpecClean$LogOneOverHIV.AIDS = log(1/LifeExpecClean$HIV.AIDS)
+
+#Standardize
+vars = c("Year", "Life.expectancy", "Adult.Mortality", "infant.deaths", 
+         "percentage.expenditure", "Measles", "BMI", "under.five.deaths",
+         "Polio", "Diphtheria", "HIV.AIDS", "thinness..1.19.year", "thinness.5.9.years",
+         "LogOneOverHIV.AIDS")
+LifeExpecClean = get_standardized_df(LifeExpecClean, vars)
 
 ##Model 1: Everything that doesnt have excessive NA values is in the model
+
+#Var Selection
+variablesToRemove = c("LogOneOverHIV.AIDS")
+LifeExpecClean1 = LifeExpecClean %>% select(-variablesToRemove)
+
 #Train Test Split
 splitPercent = 0.85
 trainTestList = get_train_test_list(LifeExpecClean1, splitPercent)
@@ -99,8 +118,6 @@ rmse1 = sqrt(mse)
 rmse1
 AIC(linearModel1)
 
-head(Test1)
-
 #Lasso
 
 Train1Features = Train1
@@ -128,15 +145,15 @@ coef(lasso.mod,s=bestlambda)
 
 #Use coef to remove terms, increase complexity of remaining terms
 #Remove:
-#Measles: e-05
-#percent.expenditure: e-04
-#thinness.5.9.years: e-04
+#infant.deaths: 0
+#under.five.deaths: e-04
+#thinness.5.9.years: 0
 #Most Impactful Term:
 #Status e0
 
 #Post Lasso Var Selection
-variablesToRemove = c("Measles", "percentage.expenditure", "thinness.5.9.years")
-LifeExpecClean2 = LifeExpecClean1 %>% select(-variablesToRemove)
+variablesToRemove = c("infant.deaths", "under.five.deaths", "thinness.5.9.years", "LogOneOverHIV.AIDS")
+LifeExpecClean2 = LifeExpecClean %>% select(-variablesToRemove)
 
 #Train Test Split
 splitPercent = 0.85
@@ -170,10 +187,11 @@ rmse2
 AIC(linearModel2)
 
 ##Model 3: Remove variables with high collinearity(not all just enough to remove the high VIF problem)
+#After Standardizing this is no longer an issue
 #under.five.deaths and infant.deaths high VIF. Remove infant.deaths and Retrain
 
-variablesToRemove = c("Measles", "percentage.expenditure", "thinness.5.9.years", "infant.deaths")
-LifeExpecClean3 = LifeExpecClean1 %>% select(-variablesToRemove)
+variablesToRemove = c("infant.deaths", "under.five.deaths", "thinness.5.9.years", "LogOneOverHIV.AIDS")
+LifeExpecClean3 = LifeExpecClean %>% select(-variablesToRemove)
 
 #Train Test Split
 splitPercent = 0.85
@@ -218,8 +236,8 @@ AIC(linearModel3)
   #Diphtheria: Nonlinear 2 vertices odd
   #HIV.AIDS: Nonlinear 1/x
   #thinness..1.19.years: Nonlinear 3 vertices even
-
-LifeExpecClean4 = LifeExpecClean3
+variablesToRemove = c("infant.deaths", "under.five.deaths", "thinness.5.9.years", "HIV.AIDS")
+LifeExpecClean4 = LifeExpecClean %>% select(-variablesToRemove)
 
 #Train Test Split
 splitPercent = 0.85
@@ -230,13 +248,16 @@ testIndex = 2
 Train4 = trainTestList[[trainIndex]]
 Test4 = trainTestList[[testIndex]]
 
+
+
 linearModel4 = lm(Life.expectancy ~ Year + Status + 
                     Adult.Mortality + Adult.Mortality^2 +
+                    percentage.expenditure + percentage.expenditure^2 +
+                    Measles + Measles^2 +
                     BMI + BMI^2 + BMI^3 + BMI^4 + 
-                    under.five.deaths + under.five.deaths^2 + under.five.deaths^3 + under.five.deaths^4 +
                     Polio + Polio^2 + Polio^3 +
                     Diphtheria + Diphtheria^2 + Diphtheria^3 + 
-                    log(1/HIV.AIDS) + 
+                    LogOneOverHIV.AIDS + 
                     thinness..1.19.years + thinness..1.19.years^2 + thinness..1.19.years^3 + thinness..1.19.years^4,
                   data = Train4)
 
@@ -262,9 +283,10 @@ AIC(linearModel4)
 
 
 ##Model 5: Remove variable the no longer explains as much
+#This model no longer serves a purpose
 #under.five.deaths no longer a significant term. Remove
-variablesToRemove =c("Measles", "percentage.expenditure", "thinness.5.9.years", "infant.deaths", "under.five.deaths")
-LifeExpecClean5 = LifeExpecClean1 %>% select(-variablesToRemove)
+variablesToRemove = c("infant.deaths", "under.five.deaths", "thinness.5.9.years", "HIV.AIDS")
+LifeExpecClean5 = LifeExpecClean %>% select(-variablesToRemove)
 
 #Train Test Split
 splitPercent = 0.85
@@ -306,9 +328,8 @@ AIC(linearModel5)
 ##Model 6: Remove a serial feature
 #Years is technically time dependent but our analysis assumes no time dependence. Try a model without years
 
-variablesToRemove = c("Measles", "percentage.expenditure", "thinness.5.9.years", 
-                                          "infant.deaths", "under.five.deaths", "Year")
-LifeExpecClean6 = LifeExpecClean1 %>% select(-variablesToRemove)
+variablesToRemove = c("infant.deaths", "under.five.deaths", "thinness.5.9.years", "HIV.AIDS", "Year")
+LifeExpecClean6 = LifeExpecClean %>% select(-variablesToRemove)
 
 #Train Test Split
 splitPercent = 0.85
@@ -321,12 +342,14 @@ Test6 = trainTestList[[testIndex]]
 
 linearModel6 = lm(Life.expectancy ~ Status + 
                     Adult.Mortality + Adult.Mortality^2 +
+                    percentage.expenditure + percentage.expenditure^2 +
+                    Measles + Measles^2 +
                     BMI + BMI^2 + BMI^3 + BMI^4 + 
                     Polio + Polio^2 + Polio^3 +
                     Diphtheria + Diphtheria^2 + Diphtheria^3 + 
-                    log(1/HIV.AIDS) + 
+                    LogOneOverHIV.AIDS + 
                     thinness..1.19.years + thinness..1.19.years^2 + thinness..1.19.years^3 + thinness..1.19.years^4,
-                  data = Train6)
+                  data = Train4)
 
 #Model Stats
 summary(linearModel6) #Now under.five.deaths no longer significant. Remove
@@ -369,7 +392,7 @@ for(i in 1:modelIterations){
   print(i)
   #Train Test Setup
   splitPercent = 0.85
-  trainTestList = get_train_test_list(LifeExpecClean1, splitPercent)
+  trainTestList = get_train_test_list(LifeExpecClean, splitPercent)
   trainIndex = 1
   testIndex = 2
   
@@ -514,8 +537,8 @@ aicModel5
 aicModel6
 
 
-library(MASS)
-library(ISLR)
+#library(MASS)
+#library(ISLR)
 library(FNN)
 
 #KNN Regression Model
@@ -529,11 +552,11 @@ LifeExpecCleanKnn$Developing =ifelse(LifeExpecCleanKnn$Status == "Developing", 1
 variablesToRemove = c("Status")
 LifeExpecCleanKnn = LifeExpecCleanKnn %>% select(-variablesToRemove)
 
-#Now normalize everything that isn't a dummy variable
-variablesToNormalize = c("Year", "Life.expectancy", "Adult.Mortality", "infant.deaths", 
+#Now standardize everything that isn't a dummy variable
+vars = c("Year", "Life.expectancy", "Adult.Mortality", "infant.deaths", 
                          "percentage.expenditure", "Measles", "BMI", "under.five.deaths",
                          "Polio", "Diphtheria", "HIV.AIDS", "thinness..1.19.year", "thinness.5.9.years")
-LifeExpecCleanKnn = get_normalized_df(LifeExpecCleanKnn, variablesToNormalize)
+LifeExpecCleanKnn = get_standardized_df(LifeExpecCleanKnn, vars)
 
 #Train Test Prep
 splitPercent = 0.85
@@ -594,14 +617,12 @@ for(k in kStart:kEnd){
       xTestKnn = TestKnn %>% select(-target)
       yTestKnn = TestKnn %>% select(target)
       
-      #UNORMALIZING
-      yTestKnn$Life.expectancy = yTestKnn$Life.expectancy * sd(LifeExpecClean$Life.expectancy) + mean(LifeExpecClean$Life.expectancy)
-      
       #Model
       knnModel = knn.reg(train = xTrainKnn, test = xTestKnn, y = yTrainKnn, k = k)
       knnPredictions = knnModel[[4]]
       
-      #UNORMALIZING
+      #UnStandardize
+      yTestKnn$Life.expectancy = yTestKnn$Life.expectancy * sd(LifeExpecClean$Life.expectancy) + mean(LifeExpecClean$Life.expectancy)
       knnPredictions = knnPredictions * sd(LifeExpecClean$Life.expectancy) + mean(LifeExpecClean$Life.expectancy)
       
       #RMSE
@@ -644,11 +665,11 @@ LifeExpecCleanKnn2$Developing =ifelse(LifeExpecCleanKnn2$Status == "Developing",
 variablesToRemove = c("Status")
 LifeExpecCleanKnn2 = LifeExpecCleanKnn2 %>% select(-variablesToRemove)
 
-#Now normalize everything that isn't a dummy variable
-variablesToNormalize = c("Year", "Life.expectancy", "Adult.Mortality", "infant.deaths", 
+#Standardize everything that isn't a dummy variable
+vars = c("Year", "Life.expectancy", "Adult.Mortality", "infant.deaths", 
                          "percentage.expenditure", "Measles", "BMI", "under.five.deaths",
                          "Polio", "Diphtheria", "HIV.AIDS", "thinness..1.19.year", "thinness.5.9.years")
-LifeExpecCleanKnn2 = get_normalized_df(LifeExpecCleanKnn2, variablesToNormalize)
+LifeExpecCleanKnn2 = get_standardized_df(LifeExpecCleanKnn2, vars)
 
 #Train Test Prep
 splitPercent = 0.85
@@ -666,7 +687,6 @@ yTrainKnn = TrainKnn[, target]
 
 xTestKnn = TestKnn %>% select(-target)
 yTestKnn = TestKnn[, target]
-str(yTrainKnn)
 
 #Model
 knnModel = knnreg(x= xTrainKnn,y = yTrainKnn, k = 2)
@@ -712,9 +732,9 @@ for(k in kStart:kEnd){
     knnModel = knnreg(x= xTrainKnn,y = yTrainKnn, k = k)
     knnPredictions = predict(knnModel, xTestKnn)
     
-    #UNORMALIZING
-    yTestKnn = yTestKnn * sd(LifeExpecClean$Life.expectancy) + mean(LifeExpecClean$Life.expectancy)
-    knnPredictions = knnPredictions * sd(LifeExpecClean$Life.expectancy) + mean(LifeExpecClean$Life.expectancy)
+    #Unstandardize so we can compare with previous models
+    #yTestKnn = yTestKnn * sd(LifeExpecClean$Life.expectancy) + mean(LifeExpecClean$Life.expectancy)
+    #knnPredictions = knnPredictions * sd(LifeExpecClean$Life.expectancy) + mean(LifeExpecClean$Life.expectancy)
     
     #RMSE
     Residuals = knnPredictions - yTestKnn

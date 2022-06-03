@@ -7,6 +7,9 @@ library(tidyverse)
 #Change working directory to this source file directory
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
+#Load my custom functions
+source("personal_funcs.r")
+
 #Future thought: Might be possible to automate this whole thing
 LifeExpecFilePath = "../Datasets/LifeExpectancyData.csv"
 LifeExpecRaw<-read.csv(LifeExpecFilePath)
