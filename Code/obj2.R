@@ -567,7 +567,7 @@ rmse
 #Find optimal K
 modelIterations = 500
 kStart = 1
-kEnd = 30
+kEnd = 10
 minRmse = 1000000
 minK = 0
 rmseKnnVector = c()
@@ -595,14 +595,14 @@ for(k in kStart:kEnd){
       yTestKnn = TestKnn %>% select(target)
       
       #UNORMALIZING
-      yTestKnn$Life.expectancy = yTestKnn$Life.expectancy * sd(LifeExpecClean1$Life.expectancy) + mean(LifeExpecClean1$Life.expectancy)
+      yTestKnn$Life.expectancy = yTestKnn$Life.expectancy * sd(LifeExpecClean$Life.expectancy) + mean(LifeExpecClean$Life.expectancy)
       
       #Model
       knnModel = knn.reg(train = xTrainKnn, test = xTestKnn, y = yTrainKnn, k = k)
       knnPredictions = knnModel[[4]]
       
       #UNORMALIZING
-      knnPredictions = knnPredictions * sd(LifeExpecClean1$Life.expectancy) + mean(LifeExpecClean1$Life.expectancy)
+      knnPredictions = knnPredictions * sd(LifeExpecClean$Life.expectancy) + mean(LifeExpecClean$Life.expectancy)
       
       #RMSE
       Residuals = knnPredictions - yTestKnn$Life.expectancy
@@ -662,17 +662,18 @@ TestKnn = trainTestList[[testIndex]]
 target = c("Life.expectancy")
 
 xTrainKnn = TrainKnn %>% select(-target)
-yTrainKnn = TestKnn[, target]
+yTrainKnn = TrainKnn[, target]
 
 xTestKnn = TestKnn %>% select(-target)
 yTestKnn = TestKnn[, target]
+str(yTrainKnn)
 
 #Model
-knnModel = knnreg(xTrainKnn, yTrainKnn, k = 1)
+knnModel = knnreg(x= xTrainKnn,y = yTrainKnn, k = 2)
 knnPredictions = predict(knnModel, xTestKnn)
 
 #RMSE
-Residuals = knnPredictions - yTestKnn$Life.expectancy
+Residuals = knnPredictions - yTestKnn
 SquaredResiduals = Residuals^2
 mse = mean(SquaredResiduals)
 rmse = sqrt(mse)
@@ -681,7 +682,7 @@ rmse
 #Find optimal K
 modelIterations = 500
 kStart = 1
-kEnd = 30
+kEnd = 10
 minRmse = 1000000
 minK = 0
 rmseKnnVector = c()
@@ -690,53 +691,45 @@ for(k in kStart:kEnd){
   print(k)
   rmseKnn = 0
   for(j in 1:modelIterations){
-    if(k!=2){ #for some reason k=2 is not allowed for this k regression function
-      #Train Test Prep
-      splitPercent = 0.85
-      trainTestList = get_train_test_list(LifeExpecCleanKnn2, splitPercent)
-      
-      trainIndex = 1
-      testIndex = 2
-      TrainKnn = trainTestList[[trainIndex]]
-      TestKnn = trainTestList[[testIndex]]
-      
-      target = c("Life.expectancy")
-      
-      xTrainKnn = TrainKnn %>% select(-target)
-      yTrainKnn = TrainKnn %>% select(target)
-      
-      xTestKnn = TestKnn %>% select(-target)
-      yTestKnn = TestKnn %>% select(target)
-      
-      #UNORMALIZING
-      yTestKnn$Life.expectancy = yTestKnn$Life.expectancy * sd(LifeExpecClean1$Life.expectancy) + mean(LifeExpecClean1$Life.expectancy)
-      
-      #Model
-      knnModel = knn.reg(train = xTrainKnn, test = xTestKnn, y = yTrainKnn, k = k)
-      knnPredictions = knnModel[[4]]
-      
-      #UNORMALIZING
-      knnPredictions = knnPredictions * sd(LifeExpecClean1$Life.expectancy) + mean(LifeExpecClean1$Life.expectancy)
-      
-      #RMSE
-      Residuals = knnPredictions - yTestKnn$Life.expectancy
-      SquaredResiduals = Residuals^2
-      mse = mean(SquaredResiduals)
-      rmse = sqrt(mse)
-      rmseKnn = rmseKnn + rmse
-    }
+    #Train Test Prep
+    splitPercent = 0.85
+    trainTestList = get_train_test_list(LifeExpecCleanKnn2, splitPercent)
+    
+    trainIndex = 1
+    testIndex = 2
+    TrainKnn = trainTestList[[trainIndex]]
+    TestKnn = trainTestList[[testIndex]]
+    
+    target = c("Life.expectancy")
+    
+    xTrainKnn = TrainKnn %>% select(-target)
+    yTrainKnn = TrainKnn[, target]
+    
+    xTestKnn = TestKnn %>% select(-target)
+    yTestKnn = TestKnn[, target]
+    
+    #Model
+    knnModel = knnreg(x= xTrainKnn,y = yTrainKnn, k = k)
+    knnPredictions = predict(knnModel, xTestKnn)
+    
+    #UNORMALIZING
+    yTestKnn = yTestKnn * sd(LifeExpecClean$Life.expectancy) + mean(LifeExpecClean$Life.expectancy)
+    knnPredictions = knnPredictions * sd(LifeExpecClean$Life.expectancy) + mean(LifeExpecClean$Life.expectancy)
+    
+    #RMSE
+    Residuals = knnPredictions - yTestKnn
+    SquaredResiduals = Residuals^2
+    mse = mean(SquaredResiduals)
+    rmse = sqrt(mse)
+    rmse
+    rmseKnn = rmseKnn + rmse
+    
   }
-  if(k==2){
-    avgRmseKnn = NA
-    rmseKnnVector = c(rmseKnnVector, avgRmseKnn)
-  }
-  else{
-    avgRmseKnn = rmseKnn/modelIterations
-    rmseKnnVector = c(rmseKnnVector, avgRmseKnn)
-    if(avgRmseKnn < minRmse){
-      minRmse = avgRmseKnn
-      minK = k
-    }
+  avgRmseKnn = rmseKnn/modelIterations
+  rmseKnnVector = c(rmseKnnVector, avgRmseKnn)
+  if(avgRmseKnn < minRmse){
+    minRmse = avgRmseKnn
+    minK = k
   }
 }
 plot(kStart:kEnd, rmseKnnVector)
@@ -745,3 +738,4 @@ abline(v = minK, col="red")
 minRmse
 minK
 
+#Seems like both models think k = 3 is the best value
