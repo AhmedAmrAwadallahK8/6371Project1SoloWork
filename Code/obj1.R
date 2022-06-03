@@ -7,6 +7,12 @@ library(GGally)
 library(car)
 library(glmnet)
 
+#Change working directory to this source file directory
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+
+#Load my custom functions
+if(!exists("get_train_test_list", mode="function")) source("personal_funcs.r")
+
 get_train_test_list = function(df, splitPercent){
   dfRowIndices = 1:dim(df)[1]
   dfRowSize = dim(df)[1]

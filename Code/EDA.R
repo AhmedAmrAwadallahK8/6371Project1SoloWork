@@ -4,6 +4,9 @@ library(ggplot2)
 library(dplyr)
 library(tidyverse)
 
+#Change working directory to this source file directory
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+
 #Future thought: Might be possible to automate this whole thing
 LifeExpecFilePath = "../Datasets/LifeExpectancyData.csv"
 LifeExpecRaw<-read.csv(LifeExpecFilePath)

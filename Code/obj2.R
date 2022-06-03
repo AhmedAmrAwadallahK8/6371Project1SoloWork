@@ -65,6 +65,8 @@ LifeExpecClean1 %>%
   gather(Column, NA_Count) %>%
   ggplot(aes(x=NA_Count, y=Column, fill = Column)) + geom_col() + ylab("Feature") + xlab("Na Value Percent")
 
+LifeExpecClean = LifeExpecClean1
+
 ##Model 1: Everything that doesnt have excessive NA values is in the model
 #Train Test Split
 splitPercent = 0.85
@@ -510,3 +512,236 @@ aicModel3
 aicModel4
 aicModel5
 aicModel6
+
+
+library(MASS)
+library(ISLR)
+library(FNN)
+
+#KNN Regression Model
+par(mfrow=c(1,1))
+#Use all base features before selection in my previous model
+LifeExpecCleanKnn = LifeExpecClean
+
+#Small Data Setup here, Status needs to be a dummy variable
+LifeExpecCleanKnn$Developed =ifelse(LifeExpecCleanKnn$Status == "Developed", 1 , 0)
+LifeExpecCleanKnn$Developing =ifelse(LifeExpecCleanKnn$Status == "Developing", 1 , 0)
+variablesToRemove = c("Status")
+LifeExpecCleanKnn = LifeExpecCleanKnn %>% select(-variablesToRemove)
+
+#Now normalize everything that isn't a dummy variable
+variablesToNormalize = c("Year", "Life.expectancy", "Adult.Mortality", "infant.deaths", 
+                         "percentage.expenditure", "Measles", "BMI", "under.five.deaths",
+                         "Polio", "Diphtheria", "HIV.AIDS", "thinness..1.19.year", "thinness.5.9.years")
+LifeExpecCleanKnn = get_normalized_df(LifeExpecCleanKnn, variablesToNormalize)
+
+#Train Test Prep
+splitPercent = 0.85
+trainTestList = get_train_test_list(LifeExpecCleanKnn, splitPercent)
+
+trainIndex = 1
+testIndex = 2
+TrainKnn = trainTestList[[trainIndex]]
+TestKnn = trainTestList[[testIndex]]
+
+target = c("Life.expectancy")
+
+xTrainKnn = TrainKnn %>% select(-target)
+yTrainKnn = TrainKnn %>% select(target)
+
+xTestKnn = TestKnn %>% select(-target)
+yTestKnn = TestKnn %>% select(target)
+
+#Model
+knnModel = knn.reg(train = xTrainKnn, test = xTestKnn, y = yTrainKnn, k = 1)
+
+knnPredictions = knnModel[[4]]
+
+#RMSE
+Residuals = knnPredictions - yTestKnn$Life.expectancy
+SquaredResiduals = Residuals^2
+mse = mean(SquaredResiduals)
+rmse = sqrt(mse)
+rmse
+
+#Find optimal K
+modelIterations = 500
+kStart = 1
+kEnd = 30
+minRmse = 1000000
+minK = 0
+rmseKnnVector = c()
+
+for(k in kStart:kEnd){
+  print(k)
+  rmseKnn = 0
+  for(j in 1:modelIterations){
+    if(k!=2){ #for some reason k=2 is not allowed for this k regression function
+      #Train Test Prep
+      splitPercent = 0.85
+      trainTestList = get_train_test_list(LifeExpecCleanKnn, splitPercent)
+      
+      trainIndex = 1
+      testIndex = 2
+      TrainKnn = trainTestList[[trainIndex]]
+      TestKnn = trainTestList[[testIndex]]
+      
+      target = c("Life.expectancy")
+      
+      xTrainKnn = TrainKnn %>% select(-target)
+      yTrainKnn = TrainKnn %>% select(target)
+      
+      xTestKnn = TestKnn %>% select(-target)
+      yTestKnn = TestKnn %>% select(target)
+      
+      #UNORMALIZING
+      yTestKnn$Life.expectancy = yTestKnn$Life.expectancy * sd(LifeExpecClean1$Life.expectancy) + mean(LifeExpecClean1$Life.expectancy)
+      
+      #Model
+      knnModel = knn.reg(train = xTrainKnn, test = xTestKnn, y = yTrainKnn, k = k)
+      knnPredictions = knnModel[[4]]
+      
+      #UNORMALIZING
+      knnPredictions = knnPredictions * sd(LifeExpecClean1$Life.expectancy) + mean(LifeExpecClean1$Life.expectancy)
+      
+      #RMSE
+      Residuals = knnPredictions - yTestKnn$Life.expectancy
+      SquaredResiduals = Residuals^2
+      mse = mean(SquaredResiduals)
+      rmse = sqrt(mse)
+      rmseKnn = rmseKnn + rmse
+    }
+  }
+  if(k==2){
+    avgRmseKnn = NA
+    rmseKnnVector = c(rmseKnnVector, avgRmseKnn)
+  }
+  else{
+    avgRmseKnn = rmseKnn/modelIterations
+    rmseKnnVector = c(rmseKnnVector, avgRmseKnn)
+    if(avgRmseKnn < minRmse){
+      minRmse = avgRmseKnn
+      minK = k
+    }
+  }
+}
+plot(kStart:kEnd, rmseKnnVector)
+abline(v = minK, col="red")
+#Report Minimum AVG RMSE and associated K
+minRmse
+minK
+
+#KNN Regression using caret lib
+library(caret)
+
+par(mfrow=c(1,1))
+#Use all base features before selection in my previous model
+LifeExpecCleanKnn2 = LifeExpecClean
+
+#Small Data Setup here, Status needs to be a dummy variable
+LifeExpecCleanKnn2$Developed =ifelse(LifeExpecCleanKnn2$Status == "Developed", 1 , 0)
+LifeExpecCleanKnn2$Developing =ifelse(LifeExpecCleanKnn2$Status == "Developing", 1 , 0)
+variablesToRemove = c("Status")
+LifeExpecCleanKnn2 = LifeExpecCleanKnn2 %>% select(-variablesToRemove)
+
+#Now normalize everything that isn't a dummy variable
+variablesToNormalize = c("Year", "Life.expectancy", "Adult.Mortality", "infant.deaths", 
+                         "percentage.expenditure", "Measles", "BMI", "under.five.deaths",
+                         "Polio", "Diphtheria", "HIV.AIDS", "thinness..1.19.year", "thinness.5.9.years")
+LifeExpecCleanKnn2 = get_normalized_df(LifeExpecCleanKnn2, variablesToNormalize)
+
+#Train Test Prep
+splitPercent = 0.85
+trainTestList = get_train_test_list(LifeExpecCleanKnn2, splitPercent)
+
+trainIndex = 1
+testIndex = 2
+TrainKnn = trainTestList[[trainIndex]]
+TestKnn = trainTestList[[testIndex]]
+
+target = c("Life.expectancy")
+
+xTrainKnn = TrainKnn %>% select(-target)
+yTrainKnn = TestKnn[, target]
+
+xTestKnn = TestKnn %>% select(-target)
+yTestKnn = TestKnn[, target]
+
+#Model
+knnModel = knnreg(xTrainKnn, yTrainKnn, k = 1)
+knnPredictions = predict(knnModel, xTestKnn)
+
+#RMSE
+Residuals = knnPredictions - yTestKnn$Life.expectancy
+SquaredResiduals = Residuals^2
+mse = mean(SquaredResiduals)
+rmse = sqrt(mse)
+rmse
+
+#Find optimal K
+modelIterations = 500
+kStart = 1
+kEnd = 30
+minRmse = 1000000
+minK = 0
+rmseKnnVector = c()
+
+for(k in kStart:kEnd){
+  print(k)
+  rmseKnn = 0
+  for(j in 1:modelIterations){
+    if(k!=2){ #for some reason k=2 is not allowed for this k regression function
+      #Train Test Prep
+      splitPercent = 0.85
+      trainTestList = get_train_test_list(LifeExpecCleanKnn2, splitPercent)
+      
+      trainIndex = 1
+      testIndex = 2
+      TrainKnn = trainTestList[[trainIndex]]
+      TestKnn = trainTestList[[testIndex]]
+      
+      target = c("Life.expectancy")
+      
+      xTrainKnn = TrainKnn %>% select(-target)
+      yTrainKnn = TrainKnn %>% select(target)
+      
+      xTestKnn = TestKnn %>% select(-target)
+      yTestKnn = TestKnn %>% select(target)
+      
+      #UNORMALIZING
+      yTestKnn$Life.expectancy = yTestKnn$Life.expectancy * sd(LifeExpecClean1$Life.expectancy) + mean(LifeExpecClean1$Life.expectancy)
+      
+      #Model
+      knnModel = knn.reg(train = xTrainKnn, test = xTestKnn, y = yTrainKnn, k = k)
+      knnPredictions = knnModel[[4]]
+      
+      #UNORMALIZING
+      knnPredictions = knnPredictions * sd(LifeExpecClean1$Life.expectancy) + mean(LifeExpecClean1$Life.expectancy)
+      
+      #RMSE
+      Residuals = knnPredictions - yTestKnn$Life.expectancy
+      SquaredResiduals = Residuals^2
+      mse = mean(SquaredResiduals)
+      rmse = sqrt(mse)
+      rmseKnn = rmseKnn + rmse
+    }
+  }
+  if(k==2){
+    avgRmseKnn = NA
+    rmseKnnVector = c(rmseKnnVector, avgRmseKnn)
+  }
+  else{
+    avgRmseKnn = rmseKnn/modelIterations
+    rmseKnnVector = c(rmseKnnVector, avgRmseKnn)
+    if(avgRmseKnn < minRmse){
+      minRmse = avgRmseKnn
+      minK = k
+    }
+  }
+}
+plot(kStart:kEnd, rmseKnnVector)
+abline(v = minK, col="red")
+#Report Minimum AVG RMSE and associated K
+minRmse
+minK
+
