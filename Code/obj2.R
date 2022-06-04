@@ -265,18 +265,50 @@ rmse4 = get_rmse(Predictions, Val4$Life.expectancy)
 rmse4
 AIC(linearModel4)
 
-#Model 5. Under.five.deaths removed
+#Model 5. under.five.deaths removed
+
+variablesToRemove = c("infant.deaths", "thinness.5.9.years", "HIV.AIDS", "Year", "under.five.deaths")
+Train5 = Train %>% select(-variablesToRemove)
+Val5 = Val %>% select(-variablesToRemove)
+
+linearModel5 = lm(Life.expectancy ~ Status + 
+                    Adult.Mortality + Adult.Mortality^2 +
+                    percentage.expenditure + percentage.expenditure^2 +
+                    BMI + BMI^2 + BMI^3 + BMI^4 +
+                    Measles + Measles^2 +
+                    Polio + Polio^2 + Polio^3 +
+                    Diphtheria + Diphtheria^2 + Diphtheria^3 + 
+                    LogOneOverHIV.AIDS + 
+                    thinness..1.19.years + thinness..1.19.years^2 + thinness..1.19.years^3 + thinness..1.19.years^4,
+                  data = Train5)
+
+#Model Stats
+summary(linearModel5) #Now under.five.deaths no longer significant. Remove
+
+#Assumption Check
+par(mfrow=c(2,2))
+plot(linearModel5)
+par(mfrow=c(1,1))
+vif(linearModel5)^2
+
+#Metrics
+Predictions = predict(linearModel5, Val5)
+rmse5 = get_rmse(Predictions, Val5$Life.expectancy)
+rmse5
+AIC(linearModel5)
 
 #Compare All Models Now
-modelIterations = 300
+modelIterations = 700
 rmseModel1 = 0
 rmseModel2 = 0
 rmseModel3 = 0
 rmseModel4 = 0
+rmseModel5 = 0
 aicModel1 = 0
 aicModel2 = 0
 aicModel3 = 0
 aicModel4 = 0
+aicModel5 = 0
 
 #Loop creates a train test split then evaluates the RMSe and AIC. Do this 
 #modelIterations amount of times and average result.
@@ -295,7 +327,6 @@ for(i in 1:modelIterations){
   Train1 = Train %>% select(-variablesToRemove)
   Val1 = Val %>% select(-variablesToRemove)
   
-  
   variablesToRemove = c("infant.deaths", "thinness.5.9.years", "LogOneOverHIV.AIDS")
   Train2 = Train %>% select(-variablesToRemove)
   Val2 = Val %>% select(-variablesToRemove)
@@ -307,6 +338,12 @@ for(i in 1:modelIterations){
   variablesToRemove = c("infant.deaths", "thinness.5.9.years", "HIV.AIDS", "Year")
   Train4 = Train %>% select(-variablesToRemove)
   Val4 = Val %>% select(-variablesToRemove)
+  
+  variablesToRemove = c("infant.deaths", "thinness.5.9.years", "HIV.AIDS", "Year", "under.five.deaths")
+  Train5 = Train %>% select(-variablesToRemove)
+  Val5 = Val %>% select(-variablesToRemove)
+  
+  
   
   #Models
   linearModel1 = lm(Life.expectancy ~., data = Train1)
@@ -335,6 +372,17 @@ for(i in 1:modelIterations){
                       thinness..1.19.years + thinness..1.19.years^2 + thinness..1.19.years^3 + thinness..1.19.years^4,
                     data = Train4)
   
+  linearModel5 = lm(Life.expectancy ~ Status + 
+                      Adult.Mortality + Adult.Mortality^2 +
+                      percentage.expenditure + percentage.expenditure^2 +
+                      BMI + BMI^2 + BMI^3 + BMI^4 +
+                      Measles + Measles^2 +
+                      Polio + Polio^2 + Polio^3 +
+                      Diphtheria + Diphtheria^2 + Diphtheria^3 + 
+                      LogOneOverHIV.AIDS + 
+                      thinness..1.19.years + thinness..1.19.years^2 + thinness..1.19.years^3 + thinness..1.19.years^4,
+                    data = Train5)
+  
   #Get RMSE for each model
   #M1
   Predictions = predict(linearModel1, Val1)
@@ -356,11 +404,17 @@ for(i in 1:modelIterations){
   rmse = get_rmse(Predictions, Val4$Life.expectancy)
   rmseModel4 = rmseModel4 + rmse
   
+  #M5
+  Predictions = predict(linearModel5, Val5)
+  rmse = get_rmse(Predictions, Val5$Life.expectancy)
+  rmseModel5 = rmseModel5 + rmse
+  
   #Get AIC
   aicModel1 = aicModel1 + AIC(linearModel1)
   aicModel2 = aicModel2 + AIC(linearModel2)
   aicModel3 = aicModel3 + AIC(linearModel3)
   aicModel4 = aicModel4 + AIC(linearModel4)
+  aicModel5 = aicModel5 + AIC(linearModel5)
 }
 
 #Average Everything
@@ -368,22 +422,28 @@ rmseModel1 = rmseModel1/modelIterations
 rmseModel2 = rmseModel2/modelIterations
 rmseModel3 = rmseModel3/modelIterations
 rmseModel4 = rmseModel4/modelIterations
+rmseModel5 = rmseModel5/modelIterations
 aicModel1 = aicModel1/modelIterations
 aicModel2 = aicModel2/modelIterations
 aicModel3 = aicModel3/modelIterations
 aicModel4 = aicModel4/modelIterations
+aicModel5 = aicModel5/modelIterations
 
 #Train Test dataframes for each model
-Test1 = Test
+variablesToRemove = c("LogOneOverHIV.AIDS")
+Test1 = Test %>% select(-variablesToRemove)
 
 variablesToRemove = c("infant.deaths", "thinness.5.9.years", "LogOneOverHIV.AIDS")
-Test2 = Test1 %>% select(-variablesToRemove)
+Test2 = Test %>% select(-variablesToRemove)
 
 variablesToRemove = c("infant.deaths", "thinness.5.9.years", "HIV.AIDS")
-Test3 = Test1 %>% select(-variablesToRemove)
+Test3 = Test %>% select(-variablesToRemove)
 
 variablesToRemove = c("infant.deaths", "thinness.5.9.years", "HIV.AIDS", "Year")
-Test4 = Test1 %>% select(-variablesToRemove)
+Test4 = Test %>% select(-variablesToRemove)
+
+variablesToRemove = c("infant.deaths", "thinness.5.9.years", "HIV.AIDS", "Year", "under.five.deaths")
+Test5 = Test %>% select(-variablesToRemove)
 
 #Get Test
 print("Test Set RMSE")
@@ -399,24 +459,31 @@ rmse3 = get_rmse(Predictions, Test3$Life.expectancy)
 Predictions = predict(linearModel4, Test4)
 rmse4 = get_rmse(Predictions, Test4$Life.expectancy)
 
+Predictions = predict(linearModel5, Test5)
+rmse5 = get_rmse(Predictions, Test5$Life.expectancy)
+
 #Output
 print("Validation Metrics")
 rmseModel1
 rmseModel2
 rmseModel3
 rmseModel4
+rmseModel5
 aicModel1
 aicModel2
 aicModel3
 aicModel4
-#CHECK TESTING CODE, MAYBE DONT REMOVE THE VARS ADKOSDKOADOASKDOAOKDOAKDSOKSDOKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+aicModel5
+
 #Test Output
 print("Test Metrics")
 rmse1
 rmse2
 rmse3
 rmse4
+rmse5
 
+plot(predict(linearModel5, Test5), Test5$Life.expectancy)
 
 #library(MASS)
 #library(ISLR)
@@ -439,33 +506,44 @@ vars = c("Year", "Life.expectancy", "Adult.Mortality", "infant.deaths",
                          "Polio", "Diphtheria", "HIV.AIDS", "thinness..1.19.year", "thinness.5.9.years")
 LifeExpecCleanKnn = get_standardized_df(LifeExpecCleanKnn, vars)
 
-#Train Test Prep
-splitPercent = 0.85
-trainTestList = get_train_test_list(LifeExpecCleanKnn, splitPercent)
+#Train Validation Test Setup
+set.seed(1)
+testSplitPercent = 0.9
+trainTestList = get_train_test_list(LifeExpecCleanKnn, testSplitPercent)
 
-trainIndex = 1
+trainValIndex = 1
 testIndex = 2
-TrainKnn = trainTestList[[trainIndex]]
+TrainVal = trainTestList[[trainValIndex]]
 TestKnn = trainTestList[[testIndex]]
 
-target = c("Life.expectancy")
+testRows = dim(Test)[1]
+trainValRows = dim(TrainVal)[1]
+valSplitPercent = 1 - (testRows/trainValRows)
 
+trainValList = get_train_test_list(TrainVal, valSplitPercent)
+
+trainIndex = 1
+valIndex = 2
+TrainKnn = trainValList[[trainIndex]]
+ValKnn = trainValList[[valIndex]]
+
+target = c("Life.expectancy")
 xTrainKnn = TrainKnn %>% select(-target)
 yTrainKnn = TrainKnn %>% select(target)
+
+xValKnn = ValKnn %>% select(-target)
+yValKnn = ValKnn %>% select(target)
 
 xTestKnn = TestKnn %>% select(-target)
 yTestKnn = TestKnn %>% select(target)
 
 #Model
-knnModel = knn.reg(train = xTrainKnn, test = xTestKnn, y = yTrainKnn, k = 1)
+knnModel = knn.reg(train = xTrainKnn, test = xValKnn, y = yTrainKnn, k = 1)
 
 knnPredictions = knnModel[[4]]
 
 #RMSE
-Residuals = knnPredictions - yTestKnn$Life.expectancy
-SquaredResiduals = Residuals^2
-mse = mean(SquaredResiduals)
-rmse = sqrt(mse)
+rmse = get_rmse(knnPredictions, yValKnn$Life.expectancy)
 rmse
 
 #Find optimal K
@@ -482,31 +560,27 @@ for(k in kStart:kEnd){
   for(j in 1:modelIterations){
     if(k!=2){ #for some reason k=2 is not allowed for this k regression function
       #Train Test Prep
-      splitPercent = 0.85
-      trainTestList = get_train_test_list(LifeExpecCleanKnn, splitPercent)
-      
+      trainValList = get_train_test_list(TrainVal, valSplitPercent)
       trainIndex = 1
-      testIndex = 2
-      TrainKnn = trainTestList[[trainIndex]]
-      TestKnn = trainTestList[[testIndex]]
+      valIndex = 2
+      
+      TrainKnn = trainValList[[trainIndex]]
+      ValKnn = trainValList[[valIndex]]
       
       target = c("Life.expectancy")
       
       xTrainKnn = TrainKnn %>% select(-target)
       yTrainKnn = TrainKnn %>% select(target)
       
-      xTestKnn = TestKnn %>% select(-target)
-      yTestKnn = TestKnn %>% select(target)
+      xValKnn = ValKnn %>% select(-target)
+      yValKnn = ValKnn %>% select(target)
       
       #Model
-      knnModel = knn.reg(train = xTrainKnn, test = xTestKnn, y = yTrainKnn, k = k)
+      knnModel = knn.reg(train = xTrainKnn, test = xValKnn, y = yTrainKnn, k = k)
       knnPredictions = knnModel[[4]]
       
       #RMSE
-      Residuals = knnPredictions - yTestKnn$Life.expectancy
-      SquaredResiduals = Residuals^2
-      mse = mean(SquaredResiduals)
-      rmse = sqrt(mse)
+      rmse = rmse = get_rmse(knnPredictions, yValKnn$Life.expectancy)
       rmseKnn = rmseKnn + rmse
     }
   }
@@ -529,51 +603,29 @@ abline(v = minK, col="red")
 minRmse
 minK
 
+#Test set RMSE
+#Model
+knnModel = knn.reg(train = xTrainKnn, test = xTestKnn, y = yTrainKnn, k = minK)
+knnPredictions = knnModel[[4]]
+
+#RMSE
+rmseTest = get_rmse(knnPredictions, yTestKnn$Life.expectancy)
+rmseTest
+
+plot(knnPredictions, yTestKnn$Life.expectancy)
+
 #KNN Regression using caret lib
 library(caret)
 
 par(mfrow=c(1,1))
-#Use all base features before selection in my previous model
-LifeExpecCleanKnn2 = LifeExpecClean
 
-#Small Data Setup here, Status needs to be a dummy variable
-LifeExpecCleanKnn2$Developed =ifelse(LifeExpecCleanKnn2$Status == "Developed", 1 , 0)
-LifeExpecCleanKnn2$Developing =ifelse(LifeExpecCleanKnn2$Status == "Developing", 1 , 0)
-variablesToRemove = c("Status")
-LifeExpecCleanKnn2 = LifeExpecCleanKnn2 %>% select(-variablesToRemove)
 
-#Standardize everything that isn't a dummy variable
-vars = c("Year", "Life.expectancy", "Adult.Mortality", "infant.deaths", 
-                         "percentage.expenditure", "Measles", "BMI", "under.five.deaths",
-                         "Polio", "Diphtheria", "HIV.AIDS", "thinness..1.19.year", "thinness.5.9.years")
-LifeExpecCleanKnn2 = get_standardized_df(LifeExpecCleanKnn2, vars)
-
-#Train Test Prep
-splitPercent = 0.85
-trainTestList = get_train_test_list(LifeExpecCleanKnn2, splitPercent)
-
-trainIndex = 1
-testIndex = 2
-TrainKnn = trainTestList[[trainIndex]]
-TestKnn = trainTestList[[testIndex]]
-
-target = c("Life.expectancy")
-
-xTrainKnn = TrainKnn %>% select(-target)
-yTrainKnn = TrainKnn[, target]
-
-xTestKnn = TestKnn %>% select(-target)
-yTestKnn = TestKnn[, target]
-
-#Model
-knnModel = knnreg(x= xTrainKnn,y = yTrainKnn, k = 2)
-knnPredictions = predict(knnModel, xTestKnn)
+#Model 2 using Caret
+knnModel = knnreg(x= xTrainKnn,y = yTrainKnn$Life.expectancy, k = 2)
+knnPredictions = predict(knnModel, xValKnn)
 
 #RMSE
-Residuals = knnPredictions - yTestKnn
-SquaredResiduals = Residuals^2
-mse = mean(SquaredResiduals)
-rmse = sqrt(mse)
+rmse = get_rmse(knnPredictions, yValKnn$Life.expectancy)
 rmse
 
 #Find optimal K
@@ -589,32 +641,27 @@ for(k in kStart:kEnd){
   rmseKnn = 0
   for(j in 1:modelIterations){
     #Train Test Prep
-    splitPercent = 0.85
-    trainTestList = get_train_test_list(LifeExpecCleanKnn2, splitPercent)
-    
+    trainValList = get_train_test_list(TrainVal, valSplitPercent)
     trainIndex = 1
-    testIndex = 2
-    TrainKnn = trainTestList[[trainIndex]]
-    TestKnn = trainTestList[[testIndex]]
+    valIndex = 2
+    
+    TrainKnn = trainValList[[trainIndex]]
+    ValKnn = trainValList[[valIndex]]
     
     target = c("Life.expectancy")
     
     xTrainKnn = TrainKnn %>% select(-target)
-    yTrainKnn = TrainKnn[, target]
+    yTrainKnn = TrainKnn %>% select(target)
     
-    xTestKnn = TestKnn %>% select(-target)
-    yTestKnn = TestKnn[, target]
+    xValKnn = ValKnn %>% select(-target)
+    yValKnn = ValKnn %>% select(target)
     
     #Model
-    knnModel = knnreg(x= xTrainKnn,y = yTrainKnn, k = k)
-    knnPredictions = predict(knnModel, xTestKnn)
+    knnModel = knnreg(x= xTrainKnn,y = yTrainKnn$Life.expectancy, k = k)
+    knnPredictions = predict(knnModel, xValKnn)
     
     #RMSE
-    Residuals = knnPredictions - yTestKnn
-    SquaredResiduals = Residuals^2
-    mse = mean(SquaredResiduals)
-    rmse = sqrt(mse)
-    rmse
+    rmse = get_rmse(knnPredictions, yValKnn$Life.expectancy)
     rmseKnn = rmseKnn + rmse
     
   }
@@ -631,4 +678,12 @@ abline(v = minK, col="red")
 minRmse
 minK
 
-#Seems like both models think k = 3 is the best value
+#Test Set
+knnModel = knnreg(x= xTrainKnn,y = yTrainKnn$Life.expectancy, k = minK)
+knnPredictions = predict(knnModel, xTestKnn)
+
+#RMSE
+rmse = get_rmse(knnPredictions, yTestKnn$Life.expectancy)
+rmse
+
+plot(knnPredictions, yTestKnn$Life.expectancy)
