@@ -6,9 +6,10 @@ library(GGally)
 library(car)
 library(glmnet)
 
+#Should I standardize separate or all together
+
 #ToDo
   #Train Val Test
-  #Redo analysis standardized
 
 #Change working directory to this source file directory
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
@@ -81,20 +82,37 @@ vars = c("Year", "Life.expectancy", "Adult.Mortality", "infant.deaths",
          "LogOneOverHIV.AIDS")
 LifeExpecClean = get_standardized_df(LifeExpecClean, vars)
 
+#Train Validation Test Setup
+set.seed(1)
+testSplitPercent = 0.9
+trainTestList = get_train_test_list(LifeExpecClean, testSplitPercent)
+
+trainValIndex = 1
+testIndex = 2
+TrainVal = trainTestList[[trainValIndex]]
+Test = trainTestList[[testIndex]]
+
+testRows = dim(Test)[1]
+trainValRows = dim(TrainVal)[1]
+testRows
+valSplitPercent = 1 - (testRows/trainValRows)
+valSplitPercent
+trainValList = get_train_test_list(TrainVal, valSplitPercent)
+
+trainIndex = 1
+valIndex = 2
+Train = trainValList[[trainIndex]]
+Val = trainValList[[valIndex]]
+
+valRows = dim(Val)[1]
+valRows
+
 ##Model 1: Everything that doesnt have excessive NA values is in the model
 
 #Var Selection
 variablesToRemove = c("LogOneOverHIV.AIDS")
-LifeExpecClean1 = LifeExpecClean %>% select(-variablesToRemove)
-
-#Train Test Split
-splitPercent = 0.85
-trainTestList = get_train_test_list(LifeExpecClean1, splitPercent)
-
-trainIndex = 1
-testIndex = 2
-Train1 = trainTestList[[trainIndex]]
-Test1 = trainTestList[[testIndex]]
+Train1 = Train %>% select(-variablesToRemove)
+Val1 = Val %>% select(-variablesToRemove)
 
 #LM Model
 linearModel1 = lm(Life.expectancy ~., data = Train1)
@@ -105,16 +123,13 @@ summary(linearModel1)
 #Assumption Check
 par(mfrow=c(2,2))
 plot(linearModel1)
-#ggpairs(Train1)
 par(mfrow=c(1,1))
+#ggpairs(Train1)
 vif(linearModel1)^2
 
 #Model Performance Stats: RMSE
-Predictions = predict(linearModel1, Test1)
-Residuals = Predictions - Test1$Life.expectancy
-SquaredResiduals = Residuals^2
-mse = mean(SquaredResiduals)
-rmse1 = sqrt(mse)
+Predictions = predict(linearModel1, Val1)
+rmse1 = get_rmse(Predictions, Val1$Life.expectancy)
 rmse1
 AIC(linearModel1)
 
@@ -124,9 +139,9 @@ Train1Features = Train1
 Train1Features = model.matrix(Life.expectancy~.,Train1Features)[,-1]
 Train1Target = Train1$Life.expectancy
 
-Test1Features = Test1
-Test1Features = model.matrix(Life.expectancy~.,Test1Features)[,-1]
-Test1Target = Test1$Life.expectancy
+Val1Features = Val1
+Val1Features = model.matrix(Life.expectancy~.,Val1Features)[,-1]
+Val1Target = Val1$Life.expectancy
 
 grid=10^seq(10,-2, length =100)
 lasso.mod=glmnet(Train1Features,Train1Target,alpha=1, lambda =grid)
@@ -134,35 +149,25 @@ cv.out=cv.glmnet(Train1Features,Train1Target,alpha=1) #alpha=1 performs LASSO
 plot(cv.out)
 
 bestlambda<-cv.out$lambda.min
-lasso.pred=predict (lasso.mod ,s=bestlambda ,newx=Test1Features)
+lasso.pred=predict (lasso.mod ,s=bestlambda ,newx=Val1Features)
 
-testMSE_LASSO<-mean((Test1Target-lasso.pred)^2)
+testMSE_LASSO<-mean((Val1Target-lasso.pred)^2)
 testMSE_LASSO
 
 coef(lasso.mod,s=bestlambda)
 
 ##Model 2: Remove features lasso found useless
-
 #Use coef to remove terms, increase complexity of remaining terms
 #Remove:
 #infant.deaths: 0
-#under.five.deaths: e-04
 #thinness.5.9.years: 0
 #Most Impactful Term:
 #Status e0
 
 #Post Lasso Var Selection
-variablesToRemove = c("infant.deaths", "under.five.deaths", "thinness.5.9.years", "LogOneOverHIV.AIDS")
-LifeExpecClean2 = LifeExpecClean %>% select(-variablesToRemove)
-
-#Train Test Split
-splitPercent = 0.85
-trainTestList = get_train_test_list(LifeExpecClean2, splitPercent)
-
-trainIndex = 1
-testIndex = 2
-Train2 = trainTestList[[trainIndex]]
-Test2 = trainTestList[[testIndex]]
+variablesToRemove = c("infant.deaths", "thinness.5.9.years", "LogOneOverHIV.AIDS")
+Train2 = Train %>% select(-variablesToRemove)
+Val2 = Val %>% select(-variablesToRemove)
 
 #LM Model
 linearModel2 = lm(Life.expectancy ~., data = Train2)
@@ -178,11 +183,8 @@ par(mfrow=c(1,1))
 vif(linearModel2)^2 
 
 #Metrics
-Predictions = predict(linearModel2, Test2)
-Residuals = Predictions - Test2$Life.expectancy
-SquaredResiduals = Residuals^2
-mse = mean(SquaredResiduals)
-rmse2 = sqrt(mse)
+Predictions = predict(linearModel2, Val2)
+rmse2 = get_rmse(Predictions, Val2$Life.expectancy)
 rmse2
 AIC(linearModel2)
 
@@ -197,25 +199,16 @@ AIC(linearModel2)
   #Diphtheria: Nonlinear 2 vertices odd
   #HIV.AIDS: Nonlinear 1/x
   #thinness..1.19.years: Nonlinear 3 vertices even
-variablesToRemove = c("infant.deaths", "under.five.deaths", "thinness.5.9.years", "HIV.AIDS")
-LifeExpecClean3 = LifeExpecClean %>% select(-variablesToRemove)
-
-#Train Test Split
-splitPercent = 0.85
-trainTestList = get_train_test_list(LifeExpecClean3, splitPercent)
-
-trainIndex = 1
-testIndex = 2
-Train3 = trainTestList[[trainIndex]]
-Test3 = trainTestList[[testIndex]]
-
-
+variablesToRemove = c("infant.deaths", "thinness.5.9.years", "HIV.AIDS")
+Train3 = Train %>% select(-variablesToRemove)
+Val3 = Val %>% select(-variablesToRemove)
 
 linearModel3 = lm(Life.expectancy ~ Year + Status + 
                     Adult.Mortality + Adult.Mortality^2 +
                     percentage.expenditure + percentage.expenditure^2 +
+                    BMI + BMI^2 + BMI^3 + BMI^4 +
                     Measles + Measles^2 +
-                    BMI + BMI^2 + BMI^3 + BMI^4 + 
+                    under.five.deaths + under.five.deaths^2 + under.five.deaths^3 + under.five.deaths^4 + 
                     Polio + Polio^2 + Polio^3 +
                     Diphtheria + Diphtheria^2 + Diphtheria^3 + 
                     LogOneOverHIV.AIDS + 
@@ -229,39 +222,28 @@ summary(linearModel3) #Now under.five.deaths no longer significant. Remove
 #Assumption Check
 par(mfrow=c(2,2))
 plot(linearModel3)
-#ggpairs(Train1)
 par(mfrow=c(1,1))
 vif(linearModel3)^2
 
 #Metrics
-Predictions = predict(linearModel3, Test3)
-Residuals = Predictions - Test3$Life.expectancy
-SquaredResiduals = Residuals^2
-mse = mean(SquaredResiduals)
-rmse3 = sqrt(mse)
+Predictions = predict(linearModel3, Val3)
+rmse3 = get_rmse(Predictions, Val3$Life.expectancy)
 rmse3
 AIC(linearModel3)
 
 ##Model 4: Remove a serial feature
 #Years is technically time dependent but our analysis assumes no time dependence. Try a model without years
 
-variablesToRemove = c("infant.deaths", "under.five.deaths", "thinness.5.9.years", "HIV.AIDS", "Year")
-LifeExpecClean4 = LifeExpecClean %>% select(-variablesToRemove)
-
-#Train Test Split
-splitPercent = 0.85
-trainTestList = get_train_test_list(LifeExpecClean4, splitPercent)
-
-trainIndex = 1
-testIndex = 2
-Train4 = trainTestList[[trainIndex]]
-Test4 = trainTestList[[testIndex]]
+variablesToRemove = c("infant.deaths", "thinness.5.9.years", "HIV.AIDS", "Year")
+Train4 = Train %>% select(-variablesToRemove)
+Val4 = Val %>% select(-variablesToRemove)
 
 linearModel4 = lm(Life.expectancy ~ Status + 
                     Adult.Mortality + Adult.Mortality^2 +
                     percentage.expenditure + percentage.expenditure^2 +
+                    BMI + BMI^2 + BMI^3 + BMI^4 +
                     Measles + Measles^2 +
-                    BMI + BMI^2 + BMI^3 + BMI^4 + 
+                    under.five.deaths + under.five.deaths^2 + under.five.deaths^3 + under.five.deaths^4 + 
                     Polio + Polio^2 + Polio^3 +
                     Diphtheria + Diphtheria^2 + Diphtheria^3 + 
                     LogOneOverHIV.AIDS + 
@@ -274,23 +256,19 @@ summary(linearModel4) #Now under.five.deaths no longer significant. Remove
 #Assumption Check
 par(mfrow=c(2,2))
 plot(linearModel4)
-#ggpairs(Train1)
 par(mfrow=c(1,1))
 vif(linearModel4)^2
 
 #Metrics
-Predictions = predict(linearModel4, Test4)
-Residuals = Predictions - Test4$Life.expectancy
-SquaredResiduals = Residuals^2
-mse = mean(SquaredResiduals)
-rmse4 = sqrt(mse)
+Predictions = predict(linearModel4, Val4)
+rmse4 = get_rmse(Predictions, Val4$Life.expectancy)
 rmse4
 AIC(linearModel4)
 
-#4 is now 3
-#6 is now 4
+#Model 5. Under.five.deaths removed
+
 #Compare All Models Now
-modelIterations = 1000
+modelIterations = 300
 rmseModel1 = 0
 rmseModel2 = 0
 rmseModel3 = 0
@@ -305,26 +283,30 @@ aicModel4 = 0
 for(i in 1:modelIterations){
   print(i)
   #Train Test Setup
-  splitPercent = 0.85
-  trainTestList = get_train_test_list(LifeExpecClean, splitPercent)
+  trainValList = get_train_test_list(TrainVal, valSplitPercent)
   trainIndex = 1
-  testIndex = 2
+  valIndex = 2
+  
+  Train = trainValList[[trainIndex]]
+  Val = trainValList[[valIndex]]
   
   #Train Test dataframes for each model
-  Train1 = trainTestList[[trainIndex]]
-  Test1 = trainTestList[[testIndex]]
+  variablesToRemove = c("LogOneOverHIV.AIDS")
+  Train1 = Train %>% select(-variablesToRemove)
+  Val1 = Val %>% select(-variablesToRemove)
   
-  variablesToRemove = c("infant.deaths", "under.five.deaths", "thinness.5.9.years", "LogOneOverHIV.AIDS")
-  Train2 = Train1 %>% select(-variablesToRemove)
-  Test2 = Test1 %>% select(-variablesToRemove)
   
-  variablesToRemove = c("infant.deaths", "under.five.deaths", "thinness.5.9.years", "HIV.AIDS")
-  Train3 = Train1 %>% select(-variablesToRemove)
-  Test3 = Test1 %>% select(-variablesToRemove)
+  variablesToRemove = c("infant.deaths", "thinness.5.9.years", "LogOneOverHIV.AIDS")
+  Train2 = Train %>% select(-variablesToRemove)
+  Val2 = Val %>% select(-variablesToRemove)
   
-  variablesToRemove = c("infant.deaths", "under.five.deaths", "thinness.5.9.years", "HIV.AIDS", "Year")
-  Train4 = Train1 %>% select(-variablesToRemove)
-  Test4 = Test1 %>% select(-variablesToRemove)
+  variablesToRemove = c("infant.deaths", "thinness.5.9.years", "HIV.AIDS")
+  Train3 = Train %>% select(-variablesToRemove)
+  Val3 = Val %>% select(-variablesToRemove)
+  
+  variablesToRemove = c("infant.deaths", "thinness.5.9.years", "HIV.AIDS", "Year")
+  Train4 = Train %>% select(-variablesToRemove)
+  Val4 = Val %>% select(-variablesToRemove)
   
   #Models
   linearModel1 = lm(Life.expectancy ~., data = Train1)
@@ -333,8 +315,9 @@ for(i in 1:modelIterations){
   linearModel3 = lm(Life.expectancy ~ Year + Status + 
                       Adult.Mortality + Adult.Mortality^2 +
                       percentage.expenditure + percentage.expenditure^2 +
-                      Measles + Measles^2 +
                       BMI + BMI^2 + BMI^3 + BMI^4 + 
+                      Measles + Measles^2 +
+                      under.five.deaths + under.five.deaths^2 + under.five.deaths^3 + under.five.deaths^4 +
                       Polio + Polio^2 + Polio^3 +
                       Diphtheria + Diphtheria^2 + Diphtheria^3 + 
                       LogOneOverHIV.AIDS + 
@@ -343,8 +326,9 @@ for(i in 1:modelIterations){
   linearModel4 = lm(Life.expectancy ~ Status + 
                       Adult.Mortality + Adult.Mortality^2 +
                       percentage.expenditure + percentage.expenditure^2 +
+                      BMI + BMI^2 + BMI^3 + BMI^4 +
                       Measles + Measles^2 +
-                      BMI + BMI^2 + BMI^3 + BMI^4 + 
+                      under.five.deaths + under.five.deaths^2 + under.five.deaths^3 + under.five.deaths^4 +
                       Polio + Polio^2 + Polio^3 +
                       Diphtheria + Diphtheria^2 + Diphtheria^3 + 
                       LogOneOverHIV.AIDS + 
@@ -353,35 +337,23 @@ for(i in 1:modelIterations){
   
   #Get RMSE for each model
   #M1
-  Predictions = predict(linearModel1, Test1)
-  Residuals = Predictions - Test1$Life.expectancy
-  SquaredResiduals = Residuals^2
-  mse = mean(SquaredResiduals)
-  rmse = sqrt(mse)
+  Predictions = predict(linearModel1, Val1)
+  rmse = get_rmse(Predictions, Val1$Life.expectancy)
   rmseModel1 = rmseModel1 + rmse
   
   #M2
-  Predictions = predict(linearModel2, Test2)
-  Residuals = Predictions - Test2$Life.expectancy
-  SquaredResiduals = Residuals^2
-  mse = mean(SquaredResiduals)
-  rmse = sqrt(mse)
+  Predictions = predict(linearModel2, Val2)
+  rmse = get_rmse(Predictions, Val2$Life.expectancy)
   rmseModel2 = rmseModel2 + rmse
   
   #M3
-  Predictions = predict(linearModel3, Test3)
-  Residuals = Predictions - Test3$Life.expectancy
-  SquaredResiduals = Residuals^2
-  mse = mean(SquaredResiduals)
-  rmse = sqrt(mse)
+  Predictions = predict(linearModel3, Val3)
+  rmse = get_rmse(Predictions, Val3$Life.expectancy)
   rmseModel3 = rmseModel3 + rmse
   
   #M4
-  Predictions = predict(linearModel4, Test4)
-  Residuals = Predictions - Test4$Life.expectancy
-  SquaredResiduals = Residuals^2
-  mse = mean(SquaredResiduals)
-  rmse = sqrt(mse)
+  Predictions = predict(linearModel4, Val4)
+  rmse = get_rmse(Predictions, Val4$Life.expectancy)
   rmseModel4 = rmseModel4 + rmse
   
   #Get AIC
@@ -401,7 +373,34 @@ aicModel2 = aicModel2/modelIterations
 aicModel3 = aicModel3/modelIterations
 aicModel4 = aicModel4/modelIterations
 
+#Train Test dataframes for each model
+Test1 = Test
+
+variablesToRemove = c("infant.deaths", "thinness.5.9.years", "LogOneOverHIV.AIDS")
+Test2 = Test1 %>% select(-variablesToRemove)
+
+variablesToRemove = c("infant.deaths", "thinness.5.9.years", "HIV.AIDS")
+Test3 = Test1 %>% select(-variablesToRemove)
+
+variablesToRemove = c("infant.deaths", "thinness.5.9.years", "HIV.AIDS", "Year")
+Test4 = Test1 %>% select(-variablesToRemove)
+
+#Get Test
+print("Test Set RMSE")
+Predictions = predict(linearModel1, Test1)
+rmse1 = get_rmse(Predictions, Test1$Life.expectancy)
+
+Predictions = predict(linearModel2, Test2)
+rmse2 = get_rmse(Predictions, Test2$Life.expectancy)
+
+Predictions = predict(linearModel3, Test3)
+rmse3 = get_rmse(Predictions, Test3$Life.expectancy)
+
+Predictions = predict(linearModel4, Test4)
+rmse4 = get_rmse(Predictions, Test4$Life.expectancy)
+
 #Output
+print("Validation Metrics")
 rmseModel1
 rmseModel2
 rmseModel3
@@ -410,6 +409,13 @@ aicModel1
 aicModel2
 aicModel3
 aicModel4
+#CHECK TESTING CODE, MAYBE DONT REMOVE THE VARS ADKOSDKOADOASKDOAOKDOAKDSOKSDOKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+#Test Output
+print("Test Metrics")
+rmse1
+rmse2
+rmse3
+rmse4
 
 
 #library(MASS)

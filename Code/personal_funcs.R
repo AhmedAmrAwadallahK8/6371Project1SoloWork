@@ -8,10 +8,15 @@ get_train_val_test_list = function(df, splitPercent){
   dfRowSize = dim(df)[1]
   sampleSize = round(splitPercent * dfRowSize)
   trainIndices = sample(dfRowIndices, sampleSize)
-  testIndices = -trainIndices
+  valTestIndices = -trainIndices
   train = df[trainIndices,]
-  test = df[testIndices,]
-  return(list(train, test))
+  valTest = df[valTestIndices,]
+  valTestList = get_train_test_list(valTest, 0.5)
+  valIndex = 1
+  testIndex = 2
+  val = valTestList[[valIndex]]
+  test = valTestList[[testIndex]]
+  return(list(train, val, test))
 }
 
 #Personal Functions Needed for Operation
@@ -24,6 +29,14 @@ get_train_test_list = function(df, splitPercent){
   train = df[trainIndices,]
   test = df[testIndices,]
   return(list(train, test))
+}
+
+get_rmse = function(predictions, targets){
+  Residuals = predictions - targets
+  SquaredResiduals = Residuals^2
+  mse = mean(SquaredResiduals)
+  rmse = sqrt(mse)
+  return(rmse)
 }
 
 get_standardized_df = function(df, variablesToStandardize){
