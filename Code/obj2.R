@@ -5,6 +5,7 @@ library(tidyverse)
 library(GGally)
 library(car)
 library(glmnet)
+library(reshape2)
 
 #Should I standardize separate or all together
 
@@ -33,6 +34,18 @@ str(LifeExpecNA)
 
 #Specifically South Sudan and Sudan have the most missing values
 LifeExpecNA %>% ggplot(aes(y = Country)) + geom_bar()
+NaCountries = c("Tuvalu", "Timor-Leste", "Sudan", "South Sudan", "San Marino", "Saint Kitts and Nevis", 
+                "Palau", "Niue", "Nauru", "Montenegro", "Monaco", "Marshall Islands", "Dominica", "Cook Islands")
+LifeExpecRaw[LifeExpecRaw$Country %in% NaCountries,] %>% ggplot(aes(y = Country)) + geom_bar()
+
+NaCountryCount = as.data.frame(table(LifeExpecNA$Country))
+CountryCount = as.data.frame(table(LifeExpecRaw[LifeExpecRaw$Country %in% NaCountries,]$Country))
+CountryCount$RowsRemaining = CountryCount$Freq - NaCountryCount$Freq 
+
+#Remaining Data for Country
+CountryCount %>% ggplot(aes(y = Var1, x = RowsRemaining)) + geom_col()
+
+
 
 #Lose Some Perspective on Developing Nations
 LifeExpecNA %>% ggplot(aes(y = Status)) + geom_bar()
@@ -74,7 +87,7 @@ LifeExpecClean %>%
 
 #Transform a feature prior to standardization as it will report NA values if we dont do it now
 LifeExpecClean$LogOneOverHIV.AIDS = log(1/LifeExpecClean$HIV.AIDS)
-
+LifeExpecCleanS = LifeExpecClean
 #Standardize
 vars = c("Year", "Life.expectancy", "Adult.Mortality", "infant.deaths", 
          "percentage.expenditure", "Measles", "BMI", "under.five.deaths",
@@ -462,6 +475,11 @@ rmse4 = get_rmse(Predictions, Test4$Life.expectancy)
 Predictions = predict(linearModel5, Test5)
 rmse5 = get_rmse(Predictions, Test5$Life.expectancy)
 
+Predictions = predict(linearModel5, Test5)
+UnstandardizedPredictions = Predictions*sd(LifeExpecCleanS$Life.expectancy) + mean(LifeExpecCleanS$Life.expectancy)
+UnstandardizedTargets = Test5$Life.expectancy*sd(LifeExpecCleanS$Life.expectancy) + mean(LifeExpecCleanS$Life.expectancy)
+rmse5Unstandardized = get_rmse(UnstandardizedPredictions, UnstandardizedTargets)
+
 #Output
 print("Validation Metrics")
 rmseModel1
@@ -483,7 +501,22 @@ rmse3
 rmse4
 rmse5
 
+#Final Model Information Together
+summary(linearModel5)
 plot(predict(linearModel5, Test5), Test5$Life.expectancy)
+aicModel5
+#Standardized
+#Validation Set
+rmseModel5
+#Test Set
+rmse5
+
+#Unstandardized RMSE
+#Test Set
+rmse5Unstandardized
+
+
+
 
 #library(MASS)
 #library(ISLR)
