@@ -7,11 +7,6 @@ library(car)
 library(glmnet)
 library(reshape2)
 
-#Should I standardize separate or all together
-
-#ToDo
-  #Train Val Test
-
 #Change working directory to this source file directory
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
@@ -33,18 +28,22 @@ LifeExpecNA = get_na_df(LifeExpecNA)
 str(LifeExpecNA)
 
 #Specifically South Sudan and Sudan have the most missing values
+
+#NA Count by Country plot
 LifeExpecNA %>% ggplot(aes(y = Country)) + geom_bar()
+
 NaCountries = c("Tuvalu", "Timor-Leste", "Sudan", "South Sudan", "San Marino", "Saint Kitts and Nevis", 
                 "Palau", "Niue", "Nauru", "Montenegro", "Monaco", "Marshall Islands", "Dominica", "Cook Islands")
+#Country count if it had NA values removed
 LifeExpecRaw[LifeExpecRaw$Country %in% NaCountries,] %>% ggplot(aes(y = Country)) + geom_bar()
 
+#Country data remaining after removing NAs plot setup
 NaCountryCount = as.data.frame(table(LifeExpecNA$Country))
 CountryCount = as.data.frame(table(LifeExpecRaw[LifeExpecRaw$Country %in% NaCountries,]$Country))
 CountryCount$RowsRemaining = CountryCount$Freq - NaCountryCount$Freq 
 
-#Remaining Data for Country
+#Remaining Data for Country plot
 CountryCount %>% ggplot(aes(y = Var1, x = RowsRemaining)) + geom_col()
-
 
 
 #Lose Some Perspective on Developing Nations
@@ -174,8 +173,6 @@ coef(lasso.mod,s=bestlambda)
 #Remove:
 #infant.deaths: 0
 #thinness.5.9.years: 0
-#Most Impactful Term:
-#Status e0
 
 #Post Lasso Var Selection
 variablesToRemove = c("infant.deaths", "thinness.5.9.years", "LogOneOverHIV.AIDS")
@@ -503,7 +500,8 @@ rmse5
 
 #Final Model Information Together
 summary(linearModel5)
-plot(predict(linearModel5, Test5), Test5$Life.expectancy)
+plot(predict(linearModel5, Test5), Test5$Life.expectancy, 
+     xlab = "Predictions", ylab = "Targets", main = "Targets v Predictions")
 aicModel5
 #Standardized
 #Validation Set
@@ -514,9 +512,6 @@ rmse5
 #Unstandardized RMSE
 #Test Set
 rmse5Unstandardized
-
-
-
 
 #library(MASS)
 #library(ISLR)

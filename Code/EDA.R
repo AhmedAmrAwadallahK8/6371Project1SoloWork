@@ -150,6 +150,8 @@ LifeExpecRaw %>% ggplot(aes(x=under.five.deaths, y=Life.expectancy)) + geom_smoo
 
 #ED12: Polio: Polio (Pol3) immunization coverage among 1-year-olds (%)
 LifeExpecRaw %>% ggplot(aes(x=Polio, y=Life.expectancy)) + geom_smooth()
+LifeExpecRaw %>% ggplot(aes(x=Polio, y=Life.expectancy, color = Status)) + geom_point(alpha = 1/2)
+
 
 #ED13: Total.expenditure: General government expenditure on health as a percentage of total government expenditure (%)
 LifeExpecRaw %>% ggplot(aes(x=Total.expenditure, y=Life.expectancy)) + geom_smooth()
@@ -178,4 +180,40 @@ LifeExpecRaw %>% ggplot(aes(x=Income.composition.of.resources, y=Life.expectancy
 #ED21: Schooling: Number of years of Schooling(years)
 LifeExpecRaw %>% ggplot(aes(x=Schooling, y=Life.expectancy)) + geom_smooth()
 
+#ED Explore Immunizations
+#ED12: Polio: Polio (Pol3) immunization coverage among 1-year-olds (%)
+LifeExpecRaw %>% ggplot(aes(x=Polio, y=Life.expectancy)) + geom_smooth()
+LifeExpecRaw %>% ggplot(aes(x=Year, y=Polio)) + geom_smooth()
+LifeExpecRaw %>% ggplot(aes(x=Polio, y=Life.expectancy, color = Status)) + geom_point(alpha = 1/2)
+LifeExpecRaw %>% ggplot(aes(x=Year, y=Polio, color = Status)) + geom_point(alpha = 1/2)
+LifeExpecRaw[LifeExpecRaw$Polio<= 12, ]  %>% ggplot(aes(x=Polio, y=Life.expectancy, color = Status)) + geom_point(alpha = 1/2)
 
+LifeExpecRaw[LifeExpecRaw$Polio == 9, ]  %>% ggplot(aes(x=Polio, y=Country)) + geom_col()
+
+LifeExpecRaw[LifeExpecRaw$Polio <= 9, ]  %>% ggplot(aes(x=Year, y=Country)) + geom_point()
+
+LifeExpecRaw[LifeExpecRaw$Polio > 9 & LifeExpecRaw$Polio <= 33, ]  %>% ggplot(aes(x=Year, y=Country)) + geom_point()
+
+LifeExpecRaw %>% ggplot(aes(x=Polio, y=Diphtheria, color = Status)) + geom_point(alpha = 1/2)
+
+LifeExpecRaw %>% ggplot(aes(x=Diphtheria, y=Life.expectancy)) + geom_smooth()
+LifeExpecRaw %>% ggplot(aes(x=Diphtheria, y=Life.expectancy, color = Status)) + geom_point(alpha = 1/2)
+LifeExpecRaw %>% ggplot(aes(x=Year, y=Diphtheria, color = Status)) + geom_point(alpha = 1/2)
+
+LifeExpecRaw[LifeExpecRaw$Diphtheria == 9, ]  %>% ggplot(aes(x=Diphtheria, y=Country)) + geom_col()
+LifeExpecRaw[LifeExpecRaw$Diphtheria == 9, ]  %>% ggplot(aes(x=Year, y=Country)) + geom_point()
+
+##TLDR Polio has some really odd behavior below 9%
+#My guess, supplies low or vaccination rate low in a country for whatever reason that normally has high vaccination. Thus 
+LifeExpecRaw %>% ggplot(aes(x=Polio, y=Life.expectancy)) + geom_smooth()
+LifeExpecRaw %>% ggplot(aes(x=Year, y=Polio)) + geom_smooth()
+LifeExpecRaw %>% ggplot(aes(x=Polio, y=Life.expectancy, color = Status)) + geom_point(alpha = 1/2)
+LifeExpecRaw %>% ggplot(aes(x=Year, y=Polio, color = Status)) + geom_point(alpha = 1/2)
+
+#Not the only one
+LifeExpecRaw %>% ggplot(aes(x=Year, y=Hepatitis.B, color = Status)) + geom_point(alpha = 1/2)
+LifeExpecRaw %>% ggplot(aes(x=Year, y=Diphtheria, color = Status)) + geom_point(alpha = 1/2)
+
+#Direct deaths on other hand doesnt have this problem
+LifeExpecRaw %>% ggplot(aes(x=Year, y=Measles, color = Status)) + geom_point(alpha = 1/2)
+LifeExpecRaw %>% ggplot(aes(x=Year, y=HIV.AIDS, color = Status)) + geom_point(alpha = 1/2)
